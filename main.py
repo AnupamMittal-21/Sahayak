@@ -1,3 +1,5 @@
+import os
+
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -14,6 +16,12 @@ import firebase_admin
 from firebase_admin import credentials
 
 app = FastAPI()
+
+session = boto3.Session(
+    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY"),
+    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.environ.get("AWS_REGION")  # Optional
+)
 
 
 class RequestModel(BaseModel):
@@ -35,7 +43,7 @@ def get_response(request: RequestModel):
     uid = request.uid
 
     # One of the exception in transcribe is of same file name, this can be effectively handled by saving the file name by timestamp.
-    file_name = audio_link.split('request/')[1]+"215"
+    file_name = audio_link.split('request/')[1]+"217"
 
     # Creating object of Amazon Transcribe and calling the function with required parameters
     transcribe_client = boto3.client('transcribe')
@@ -76,4 +84,7 @@ def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
 
 if __name__ == "__main__":
-   uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+
+# uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

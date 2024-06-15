@@ -42,4 +42,6 @@ def get_speech(text, polly, s3_client, bucket_name, s3_key):
         print("Could not stream audio")
         sys.exit(-1)
 
+# get_speech("Welcome! To record your query, click the Start button. When you're finished, click Stop, and then click Send to receive a response. If you face any issues, click Restart to record your query again.", polly=boto3.client("polly"), s3_client=boto3.client('s3'), bucket_name='hackon', s3_key = 'path/in/bucket/Intro2.mp3')
+
 # URL: https://hackon.s3.amazonaws.com/path/in/bucket/speech.mp3

@@ -72,7 +72,7 @@ def get_response(request: RequestModel):
     response_audio_link = str.replace(response_audio_link, "request", "response")
     response_audio_s3_key = response_audio_link.split("s3.amazonaws.com/")[1]
 
-    get_speech(text=response_llm, polly=boto3.client("polly"), s3_client=boto3.client('s3'), bucket_name='hackon', s3_key = response_audio_s3_key)
+    get_speech(text=response_llm, polly=boto3.client('polly', region_name='us-west-2'), s3_client = boto3.client('s3', region_name='us-west-2'), bucket_name='hackon', s3_key = response_audio_s3_key)
     response1 = response_audio_link
 
     # Return the response model

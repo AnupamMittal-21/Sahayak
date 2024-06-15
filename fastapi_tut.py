@@ -5,10 +5,12 @@ from polly import get_speech
 from GoEmotion import get_sentiment
 from openAi import get_embeddings
 from firebase import get_previous_query_data
+from llm_response import get_response_from_llm
+from service_db import get_services_response
+from firebase import update_session
 import boto3
-
-# import datetime
-# timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+import firebase_admin
+from firebase_admin import credentials
 
 app = FastAPI()
 
@@ -31,7 +33,8 @@ def get_response(request: RequestModel):
     category = request.category
     uid = request.uid
 
-    file_name = audio_link.split('request/')[1]
+    # One of the exception in transcribe is of same file name, this can be effectively handled by saving the file name by timestamp.
+    file_name = audio_link.split('request/')[1]+"214"
 
     # Creating object of Amazon Transcribe and calling the function with required parameters
     transcribe_client = boto3.client('transcribe')
@@ -43,23 +46,25 @@ def get_response(request: RequestModel):
     # Creating Embeddings of the transcript using OpenAI.
     user_query_embeddings = get_embeddings(transcript)
 
+    cred = credentials.Certificate("vcs-hackon-firebase.json")
+    firebase_admin.initialize_app(cred)
     # Getting the previous query data and finding the top similar vectors.
-    previous_and_current_embeddings = get_previous_query_data(uid=uid, category=category, user_query_vector=user_query_embeddings)
+    previous_similar_queries, previous_similar_response, previous_similar_sentiments, embeddings_query_and_previous = get_previous_query_data(uid=uid, category=category, user_query_vector=user_query_embeddings)
 
-    # Pass the joint embeddings to service data base for similarity search.
-    # Get the top 3 similar vectors and their cosine similarities.
-    # Pass the the data to OpenAI Model.
-
+    # Calculate the similarity between combined query and service database and get responses.
+    service_database_answers = get_services_response(embeddings_query_and_previous)
+    # Pass the previous query data, the sentiment, the user query and the service database answers to the OpenAI model.
+    response_llm = get_response_from_llm(user_query=transcript, sentiment=sentiment, previous_queries=previous_similar_queries, previous_responses=previous_similar_response, previous_sentiments=previous_similar_sentiments, service_database_answers=service_database_answers)
     # Processing the audio link for saving the speech by Amazon polly.
+
+    update_session(uid=uid,category=category, new_embedding=user_query_embeddings, new_query=transcript, new_response=response_llm, new_sentiment=sentiment)
+
     response_audio_link = audio_link
     response_audio_link = str.replace(response_audio_link, "request", "response")
     response_audio_s3_key = response_audio_link.split("s3.amazonaws.com/")[1]
 
-    get_speech(text=transcript, polly=boto3.client("polly"), s3_client=boto3.client('s3'), bucket_name='hackon', s3_key = response_audio_s3_key)
+    get_speech(text=response_llm, polly=boto3.client("polly"), s3_client=boto3.client('s3'), bucket_name='hackon', s3_key = response_audio_s3_key)
     response1 = response_audio_link
-    response1 += "?category=" + str(category)
-    response1 += "&uid=" + str(uid)
-    response1 += "&sentiment=" + str(sentiment)
 
     # Return the response model
     return ResponseModel(response_audio_link=response1)

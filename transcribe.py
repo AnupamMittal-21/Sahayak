@@ -35,7 +35,7 @@ def transcribe_file(job_name, file_uri, transcribe_client):
             transcript = "Sorry, can you please repeat that?"
 
 
-        time.sleep(10)
+        time.sleep(4)
     return transcript
 
 

@@ -49,7 +49,9 @@ load_dotenv()
 #     print(i)
 
 
+
 def get_embeddings(text):
+
     url = 'https://api.openai.com/v1/embeddings'
 
     headers = {
@@ -66,3 +68,9 @@ def get_embeddings(text):
     response = response.json()
     embeddings = response['data'][0]['embedding']
     return embeddings
+
+# def get_response_from_llm(user_query, sentiment, previous_queries, previous_responses, service_database_answers):
+#
+# #
+# a = get_embeddings("how can i achieve scaling in EC2 in aws?")
+# print(a)

@@ -106,7 +106,7 @@ def get_response(request: RequestModel):
 def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
 
-# Heey u
+# Heey u,maf
 
 
 # if __name__ == "__main__":

@@ -18,8 +18,8 @@ from firebase_admin import credentials
 app = FastAPI()
 
 session = boto3.Session(
-    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY"),
-    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+    aws_access_key_id=os.environ.get("ACCESS_KEY"),
+    aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
     region_name=os.environ.get("REGION")  # Optional
 )
 
@@ -50,10 +50,10 @@ def get_response(request: RequestModel):
     transcribe_client = boto3.client(
         'transcribe',
         region_name='us-east-1',
-        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY"),
-        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+        aws_access_key_id=os.environ.get("ACCESS_KEY"),
+        aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
     )
-    print("Region")
+    print(f"Region is {os.environ.get('REGION')}")
     transcript = transcribe_file(job_name=file_name, file_uri=audio_link, transcribe_client=transcribe_client)
     print("Transcript")
     # Performing Sentiment analysis of the whole transcript using GoEmotion.
@@ -82,15 +82,15 @@ def get_response(request: RequestModel):
     polly_obj = boto3.client(
         'polly',
         region_name='us-east-1',
-        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY"),
-        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+        aws_access_key_id=os.environ.get("ACCESS_KEY"),
+        aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
     )
 
     s3_obj = boto3.client(
         's3',
         region_name='us-east-1',
-        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY"),
-        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+        aws_access_key_id=os.environ.get("ACCESS_KEY"),
+        aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
     )
 
     get_speech(text=response_llm, polly=polly_obj, s3_client=s3_obj, bucket_name='hackon', s3_key = response_audio_s3_key)

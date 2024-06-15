@@ -18,7 +18,7 @@ class MyEventHandler(TranscriptResultStreamHandler):
                 print(f'Transcript: {alt.transcript}')
 
 async def transcribe_audio(pcm_audio_path):
-    client = TranscribeStreamingClient(region="us-west-2")
+    client = TranscribeStreamingClient(region="us-east-1")
     stream = await client.start_stream_transcription(
         language_code="en-US",
         media_sample_rate_hz=16000,
@@ -40,10 +40,10 @@ def convert_mp3_to_pcm(mp3_file_path, pcm_file_path):
     audio = audio.set_frame_rate(16000).set_channels(1)
     audio.export(pcm_file_path, format="wav")
 
-if __name__ == "__main__":
-    mp3_file_path = "english_trial.mp3"
-    pcm_file_path = "audiofile.pcm"
-
-    convert_mp3_to_pcm(mp3_file_path, pcm_file_path)
-
-    asyncio.run(transcribe_audio(pcm_file_path))
+# if __name__ == "__main__":
+#     mp3_file_path = "english_trial.mp3"
+#     pcm_file_path = "audiofile.pcm"
+#
+#     convert_mp3_to_pcm(mp3_file_path, pcm_file_path)
+#
+#     asyncio.run(transcribe_audio(pcm_file_path))

@@ -43,10 +43,10 @@ def get_response(request: RequestModel):
     uid = request.uid
 
     # One of the exception in transcribe is of same file name, this can be effectively handled by saving the file name by timestamp.
-    file_name = audio_link.split('request/')[1]+"217"
+    file_name = audio_link.split('request/')[1]+"218"
 
     # Creating object of Amazon Transcribe and calling the function with required parameters
-    transcribe_client = boto3.client('transcribe')
+    transcribe_client = boto3.client('transcribe', region_name='us-west-2')
     transcript = transcribe_file(job_name=file_name, file_uri=audio_link, transcribe_client=transcribe_client)
 
     # Performing Sentiment analysis of the whole transcript using GoEmotion.

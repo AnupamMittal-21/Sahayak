@@ -46,7 +46,7 @@ def get_response(request: RequestModel):
     file_name = audio_link.split('request/')[1]+"218"
 
     # Creating object of Amazon Transcribe and calling the function with required parameters
-    transcribe_client = boto3.client('transcribe', region_name='us-west-2')
+    transcribe_client = boto3.client('transcribe', region_name='us-east-1')
     transcript = transcribe_file(job_name=file_name, file_uri=audio_link, transcribe_client=transcribe_client)
 
     # Performing Sentiment analysis of the whole transcript using GoEmotion.
@@ -72,7 +72,7 @@ def get_response(request: RequestModel):
     response_audio_link = str.replace(response_audio_link, "request", "response")
     response_audio_s3_key = response_audio_link.split("s3.amazonaws.com/")[1]
 
-    get_speech(text=response_llm, polly=boto3.client('polly', region_name='us-west-2'), s3_client = boto3.client('s3', region_name='us-west-2'), bucket_name='hackon', s3_key = response_audio_s3_key)
+    get_speech(text=response_llm, polly=boto3.client('polly', region_name='us-east-1'), s3_client = boto3.client('s3', region_name='us-east-1'), bucket_name='hackon', s3_key = response_audio_s3_key)
     response1 = response_audio_link
 
     # Return the response model

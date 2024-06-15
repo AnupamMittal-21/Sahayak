@@ -47,7 +47,12 @@ def get_response(request: RequestModel):
     file_name = audio_link.split('request/')[1]+"218"
 
     # Creating object of Amazon Transcribe and calling the function with required parameters
-    transcribe_client = boto3.client('transcribe', region_name='us-east-1')
+    transcribe_client = boto3.client(
+        'transcribe',
+        region_name='us-east-1',
+        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY"),
+        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+    )
     print("Region")
     transcript = transcribe_file(job_name=file_name, file_uri=audio_link, transcribe_client=transcribe_client)
     print("Transcript")
@@ -74,7 +79,21 @@ def get_response(request: RequestModel):
     response_audio_link = str.replace(response_audio_link, "request", "response")
     response_audio_s3_key = response_audio_link.split("s3.amazonaws.com/")[1]
 
-    get_speech(text=response_llm, polly=boto3.client('polly', region_name='us-east-1'), s3_client = boto3.client('s3', region_name='us-east-1'), bucket_name='hackon', s3_key = response_audio_s3_key)
+    polly_obj = boto3.client(
+        'polly',
+        region_name='us-east-1',
+        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY"),
+        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+    )
+
+    s3_obj = boto3.client(
+        's3',
+        region_name='us-east-1',
+        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY"),
+        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+    )
+
+    get_speech(text=response_llm, polly=polly_obj, s3_client=s3_obj, bucket_name='hackon', s3_key = response_audio_s3_key)
     response1 = response_audio_link
 
     # Return the response model

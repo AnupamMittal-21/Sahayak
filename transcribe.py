@@ -25,17 +25,16 @@ def transcribe_file(job_name, file_uri, transcribe_client):
             if job_status == 'COMPLETED':
                 response = urllib.request.urlopen(job['TranscriptionJob']['Transcript']['TranscriptFileUri'])
                 data = json.loads(response.read())
-                print(data)
                 text = data['results']['transcripts'][0]['transcript']
                 transcript = text
-                print(text)
+                print(f"Transcript Succesfull : {transcript}")
             break
         else:
             print(f"Waiting for {job_name}. Current Status is {job_status}")
             transcript = "Sorry, can you please repeat that?"
+            time.sleep(6)
 
-
-        time.sleep(4)
+    print(f"Transcript inside the function is : {transcript}")
     return transcript
 
 

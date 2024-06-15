@@ -1,5 +1,5 @@
 import os
-
+import random
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -44,7 +44,8 @@ def get_response(request: RequestModel):
     uid = request.uid
 
     # One of the exception in transcribe is of same file name, this can be effectively handled by saving the file name by timestamp.
-    file_name = audio_link.split('request/')[1]+"218"
+    # file_name = audio_link.split('request/')[1]+"218"
+    file_name = str(random.randint(1000, 9999))
 
     # Creating object of Amazon Transcribe and calling the function with required parameters
     transcribe_client = boto3.client(

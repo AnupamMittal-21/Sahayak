@@ -78,7 +78,6 @@ def get_response(request: RequestModel):
     # Return the response model
     return ResponseModel(response_audio_link=response1)
 
-# Default root endpoint
 @app.get("/")
 def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
@@ -87,5 +86,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     print(f"Starting server on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
-
-# uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

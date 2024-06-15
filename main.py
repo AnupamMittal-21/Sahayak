@@ -106,6 +106,9 @@ def get_response(request: RequestModel):
 def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
 
+# Heey u
+
+
 # if __name__ == "__main__":
 #     print(f"Region is : {os.environ.get('REGION')}")
 #     port = int(os.environ.get("PORT", 8000))

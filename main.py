@@ -55,13 +55,13 @@ def get_response(request: RequestModel):
     )
     print(f"Region is {os.environ.get('REGION')}")
     transcript = transcribe_file(job_name=file_name, file_uri=audio_link, transcribe_client=transcribe_client)
-    print("Transcript")
+    print(f"Transcript : {transcript}")
     # Performing Sentiment analysis of the whole transcript using GoEmotion.
     sentiment = get_sentiment(transcript)
-    print("Sentiment")
+    print(f"Sentiment: {sentiment}")
     # Creating Embeddings of the transcript using OpenAI.
     user_query_embeddings = get_embeddings(transcript)
-    print("Embeddings")
+    print(f"Embeddings = {user_query_embeddings}")
     cred = credentials.Certificate("vcs-hackon-firebase.json")
     firebase_admin.initialize_app(cred)
     # Getting the previous query data and finding the top similar vectors.

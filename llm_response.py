@@ -25,23 +25,27 @@ def get_response_from_llm(user_query, sentiment, previous_queries, previous_resp
 
     input_data += "\nPlease provide a detailed response in a step-by-step format that does not exceed 1 minute of speaking time."
 
-    # Call the OpenAI API with the prepared input data
-    openai.api_key = os.environ.get("OPENAI_API_KEY")
-    response_llm = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": input_data}
-        ],
-        max_tokens=300,  # Adjust the token limit to ensure conciseness
-        temperature=0.7
-    )
+    try:
+        # Call the OpenAI API with the prepared input data
+        openai.api_key = os.environ.get("OPENAI_API_KEY")
+        response_llm = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": input_data}
+            ],
+            max_tokens=300,  # Adjust the token limit to ensure conciseness
+            temperature=0.7
+        )
 
-    # Extract and print the response
-    answer = response_llm.choices[0].message['content'].strip()
-    print(answer)
+        # Extract and print the response
+        answer = response_llm.choices[0].message['content'].strip()
+        print(answer)
 
-    return answer
+        return answer
+    except Exception as e:
+        print(f"Error in getting response from LLM : {e}")
+        return ""
 
 
 # # Example usage:

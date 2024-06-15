@@ -31,57 +31,100 @@ class RequestModel(BaseModel):
     category: int
     uid: str
 
-
-class ResponseModel(BaseModel):
-    response_audio_link: str
+#
+# class ResponseModel(BaseModel):
+#     response_audio_link: str
 
 
 @app.post("/get_response")
 def get_response(request: RequestModel):
 
     try:
-
         # Extract the strings from the request
         audio_link = request.audio_link
-        print("Extracted audio link")
         category = request.category
         uid = request.uid
+        print("Extracted audio link")
 
-        # return {'kjf':uid}
 
-        # One of the exception in transcribe is of same file name, this can be effectively handled by saving the file name by timestamp.
-        # file_name = audio_link.split('request/')[1]+"218"
+#       ########################################## Transcription #################################
+
         file_name = str(random.randint(1000, 9999))
 
-        # Creating object of Amazon Transcribe and calling the function with required parameters
         transcribe_client = boto3.client(
             'transcribe',
             region_name='us-east-1',
             aws_access_key_id=os.environ.get("ACCESS_KEY"),
             aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
         )
-        print(f"Region is {os.environ.get('REGION')}")
+
         transcript = transcribe_file(job_name=file_name, file_uri=audio_link, transcribe_client=transcribe_client)
+
+        if transcript == "":
+            return {"Error": "Error in Transcription"}
+
         print(f"Transcript : {transcript}")
+
+
+#       ###################################### Sentiment Analysis ################################
+
+        # There is some problem with the sentiment analysis, so we are using a static value for now.
         # Performing Sentiment analysis of the whole transcript using GoEmotion.
         # sentiment = get_sentiment(transcript)
         sentiment = "frustrated"
         print(f"Sentiment: {sentiment}")
+
+
+#       ########################################## Embeddings #####################################
+
         # Creating Embeddings of the transcript using OpenAI.
         user_query_embeddings = get_embeddings(transcript)
+        if not user_query_embeddings:
+            return {"Error": "Error in getting transcription embeddings"}
+
         print(f"Embeddings = {user_query_embeddings}")
-        cred = credentials.Certificate("vcs-hackon-firebase.json")
-        firebase_admin.initialize_app(cred)
+
+
+#       ########################################### Firebase ######################################
+
+        try:
+            cred = credentials.Certificate("vcs-hackon-firebase.json")
+            firebase_admin.initialize_app(cred)
+        except Exception as e:
+            print(f"Error in initializing firebase : {e}")
+            return {"Error": "Error in initializing firebase"}
+
+        print("Firebase Initialized")
+        categories_list = ['generals', 'aws', 'order', 'prime', 'refund', 'retailer']
         # Getting the previous query data and finding the top similar vectors.
-        previous_similar_queries, previous_similar_response, previous_similar_sentiments, embeddings_query_and_previous = get_previous_query_data(uid=uid, category=category, user_query_vector=user_query_embeddings)
+        previous_similar_queries, previous_similar_response, previous_similar_sentiments, embeddings_query_and_previous = get_previous_query_data(uid=uid, category=categories_list[category], user_query_vector=user_query_embeddings)
+
+        print(f"Previous Queries + User Query : {embeddings_query_and_previous}")
+
+
+#       ########################################### Service DB #####################################
 
         # Calculate the similarity between combined query and service database and get responses.
         service_database_answers = get_services_response(embeddings_query_and_previous)
-        # Pass the previous query data, the sentiment, the user query and the service database answers to the OpenAI model.
-        response_llm = get_response_from_llm(user_query=transcript, sentiment=sentiment, previous_queries=previous_similar_queries, previous_responses=previous_similar_response, previous_sentiments=previous_similar_sentiments, service_database_answers=service_database_answers)
-        # Processing the audio link for saving the speech by Amazon polly.
 
+
+#       ########################################### LLM (OpenAI) ####################################
+
+        # Pass the previous query data, the sentiment, the user query and the service database answers to the OpenAI.
+        response_llm = get_response_from_llm(user_query=transcript, sentiment=sentiment, previous_queries=previous_similar_queries, previous_responses=previous_similar_response, previous_sentiments=previous_similar_sentiments, service_database_answers=service_database_answers)
+        if response_llm == "":
+            return {"Error": "Error in getting response from LLM"}
+
+        print(f"Response from LLM : {response_llm}")
+
+
+#       ###################################### Update DataBase ######################################
+
+        # Processing the audio link for saving the speech by Amazon polly.
         update_session(uid=uid,category=category, new_embedding=user_query_embeddings, new_query=transcript, new_response=response_llm, new_sentiment=sentiment)
+        print("Session Updated")
+
+#       ########################################### Polly ############################################
 
         response_audio_link = audio_link
         response_audio_link = str.replace(response_audio_link, "request", "response")
@@ -106,17 +149,12 @@ def get_response(request: RequestModel):
 
         return {"response_audio_link": response1}
 
-        # # Return the response model
-        # return ResponseModel(response_audio_link=response1)
     except Exception as e:
-        return {"Error": "Error_"}
+        return {"Error": f"Some Exception occurred, Details are : {e}"}
 
 @app.get("/")
 def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
-
-# Heey u,maf
-
 
 # if __name__ == "__main__":
 #     print(f"Region is : {os.environ.get('REGION')}")

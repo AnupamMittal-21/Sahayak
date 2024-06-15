@@ -60,7 +60,8 @@ def get_response(request: RequestModel):
     transcript = transcribe_file(job_name=file_name, file_uri=audio_link, transcribe_client=transcribe_client)
     print(f"Transcript : {transcript}")
     # Performing Sentiment analysis of the whole transcript using GoEmotion.
-    sentiment = get_sentiment(transcript)
+    # sentiment = get_sentiment(transcript)
+    sentiment = "frustrated"
     print(f"Sentiment: {sentiment}")
     # Creating Embeddings of the transcript using OpenAI.
     user_query_embeddings = get_embeddings(transcript)

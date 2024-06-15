@@ -39,6 +39,7 @@ def get_response(request: RequestModel):
 
     # Extract the strings from the request
     audio_link = request.audio_link
+    print("Extracted audio link")
     category = request.category
     uid = request.uid
 
@@ -47,14 +48,15 @@ def get_response(request: RequestModel):
 
     # Creating object of Amazon Transcribe and calling the function with required parameters
     transcribe_client = boto3.client('transcribe', region_name='us-east-1')
+    print("Region")
     transcript = transcribe_file(job_name=file_name, file_uri=audio_link, transcribe_client=transcribe_client)
-
+    print("Transcript")
     # Performing Sentiment analysis of the whole transcript using GoEmotion.
     sentiment = get_sentiment(transcript)
-
+    print("Sentiment")
     # Creating Embeddings of the transcript using OpenAI.
     user_query_embeddings = get_embeddings(transcript)
-
+    print("Embeddings")
     cred = credentials.Certificate("vcs-hackon-firebase.json")
     firebase_admin.initialize_app(cred)
     # Getting the previous query data and finding the top similar vectors.

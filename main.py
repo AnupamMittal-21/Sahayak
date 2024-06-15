@@ -11,11 +11,13 @@ from firebase import get_previous_query_data
 from llm_response import get_response_from_llm
 from service_db import get_services_response
 from firebase import update_session
+from dotenv import load_dotenv
 import boto3
 import firebase_admin
 from firebase_admin import credentials
 
 app = FastAPI()
+load_dotenv()
 
 session = boto3.Session(
     aws_access_key_id=os.environ.get("ACCESS_KEY"),

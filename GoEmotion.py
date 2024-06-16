@@ -15,7 +15,7 @@ def get_sentiment(user_query):
         logits = outputs.logits
 
     predicted_emotion = torch.argmax(logits, dim=1)
-    print(predicted_emotion)
+    # print(predicted_emotion)
 
 
     # Map the prediction to emotion labels

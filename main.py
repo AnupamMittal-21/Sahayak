@@ -15,7 +15,10 @@ from dotenv import load_dotenv
 import boto3
 import firebase_admin
 from firebase_admin import credentials
+from firebase_admin import firestore
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from transcribe_stream import transcribe_audio
 
 app = FastAPI()
 load_dotenv()
@@ -41,10 +44,6 @@ class RequestModel(BaseModel):
     category: int
     uid: str
 
-#
-# class ResponseModel(BaseModel):
-#     response_audio_link: str
-
 
 @app.post("/get_response")
 def get_response(request: RequestModel):
@@ -54,6 +53,10 @@ def get_response(request: RequestModel):
         audio_link = request.audio_link
         category = request.category
         uid = request.uid
+        uid = 'oGjjFFZj0IuCpSZmOT1Y'
+        category = 0
+        categories_list = ['generals', 'aws', 'order', 'prime', 'refund', 'retailer']
+        category = categories_list[category]
         print("Extracted audio link")
 
 
@@ -75,13 +78,14 @@ def get_response(request: RequestModel):
 
         print(f"Transcript : {transcript}")
 
+        # transcript = "can you repeat the step you told me about the scaling in EC2 in AWS?"
 
 #       ###################################### Sentiment Analysis ################################
 
         # There is some problem with the sentiment analysis, so we are using a static value for now.
         # Performing Sentiment analysis of the whole transcript using GoEmotion.
-        # sentiment = get_sentiment(transcript)
-        sentiment = "frustrated"
+        # sentiment = "relaxed"
+        sentiment = get_sentiment(transcript)
         print(f"Sentiment: {sentiment}")
 
 
@@ -92,7 +96,7 @@ def get_response(request: RequestModel):
         if not user_query_embeddings:
             return {"Error": "Error in getting transcription embeddings"}
 
-        print(f"Embeddings = {user_query_embeddings}")
+        print(f"Embeddings = {user_query_embeddings[0:3]}")
 
 
 #       ########################################### Firebase ######################################
@@ -100,16 +104,18 @@ def get_response(request: RequestModel):
         try:
             cred = credentials.Certificate("vcs-hackon-firebase.json")
             firebase_admin.initialize_app(cred)
+            db = firestore.client()
+            doc_ref = db.collection("Queries").document(uid)
+            print("Firebase Initialized")
+
         except Exception as e:
             print(f"Error in initializing firebase : {e}")
             return {"Error": "Error in initializing firebase"}
 
-        print("Firebase Initialized")
-        categories_list = ['generals', 'aws', 'order', 'prime', 'refund', 'retailer']
         # Getting the previous query data and finding the top similar vectors.
-        previous_similar_queries, previous_similar_response, previous_similar_sentiments, embeddings_query_and_previous = get_previous_query_data(uid=uid, category=categories_list[category], user_query_vector=user_query_embeddings)
+        previous_similar_queries, previous_similar_response, previous_similar_sentiments, embeddings_query_and_previous = get_previous_query_data(doc_ref=doc_ref,uid=uid, category=category, user_query_vector=user_query_embeddings)
 
-        print(f"Previous Queries + User Query : {embeddings_query_and_previous}")
+        print(f"Previous Queries + User Query : {embeddings_query_and_previous[0:3]}")
 
 
 #       ########################################### Service DB #####################################
@@ -127,18 +133,13 @@ def get_response(request: RequestModel):
 
         print(f"Response from LLM : {response_llm}")
 
-
 #       ###################################### Update DataBase ######################################
 
         # Processing the audio link for saving the speech by Amazon polly.
-        update_session(uid=uid,category=category, new_embedding=user_query_embeddings, new_query=transcript, new_response=response_llm, new_sentiment=sentiment)
+        update_session(db=db, uid=uid,category=category, new_embedding=user_query_embeddings, new_query=transcript, new_response=response_llm, new_sentiment=sentiment)
         print("Session Updated")
 
 #       ########################################### Polly ############################################
-
-        response_audio_link = audio_link
-        response_audio_link = str.replace(response_audio_link, "request", "response")
-        response_audio_s3_key = response_audio_link.split("s3.amazonaws.com/")[1]
 
         polly_obj = boto3.client(
             'polly',
@@ -147,17 +148,12 @@ def get_response(request: RequestModel):
             aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
         )
 
-        s3_obj = boto3.client(
-            's3',
-            region_name='us-east-1',
-            aws_access_key_id=os.environ.get("ACCESS_KEY"),
-            aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
-        )
+        audio_stream = get_speech(text=response_llm, polly=polly_obj)
 
-        get_speech(text=response_llm, polly=polly_obj, s3_client=s3_obj, bucket_name='hackon', s3_key = response_audio_s3_key)
-        response1 = response_audio_link
+        # response_transcribe = transcribe_audio(audio_stream,file_name)
+        # print('Response Transcribe : ',response_transcribe)
 
-        return {"response_audio_link": response1}
+        return StreamingResponse(audio_stream, media_type="audio/mpeg", headers={"Content-Disposition": "attachment; filename=speech.mp3"})
 
     except Exception as e:
         return {"Error": f"Some Exception occurred, Details are : {e}"}
@@ -166,8 +162,8 @@ def get_response(request: RequestModel):
 def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 #     print(f"Region is : {os.environ.get('REGION')}")
 #     port = int(os.environ.get("PORT", 8000))
 #     print(f"Starting server on port {port}")
-#     uvicorn.run('main:app', host="0.0.0.0", port=port, reload= True)
+    uvicorn.run('main:app', host="0.0.0.0", port=8000, reload= True)

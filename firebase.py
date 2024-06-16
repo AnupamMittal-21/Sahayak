@@ -32,6 +32,7 @@ def get_all_embeddings(category, doc_ref):
 # This function finds the top K results by matching all the previous query of session with current query
 
 def find_top_similar_vectors(query_vector, other_vectors, top_n=3):
+
     # Convert vectors to numpy arrays if not already
     query_vector = np.array(query_vector).reshape(1, -1)  # Reshape to row vector
     other_vectors = np.array(other_vectors)
@@ -49,18 +50,51 @@ def find_top_similar_vectors(query_vector, other_vectors, top_n=3):
     return top_vectors, top_similarities, top_indices
 
 
+def get_previous_query_data(doc_ref,uid, category, user_query_vector):
+    try:
+        # Get all previous embeddings of the targeted category
+        previous_embeddings = get_all_embeddings(category=category, doc_ref=doc_ref)
+
+        if len(previous_embeddings) == 0:
+            return [], [], [], user_query_vector
+
+        # Find the top similar vectors
+        top_vectors, top_similarities, top_indices = find_top_similar_vectors(query_vector=user_query_vector,other_vectors=previous_embeddings, top_n=3)
+
+        print("Top Vectors are: ")
+        for i in top_vectors:
+            print(i[0:3])
+        print("Top similarities : ",top_similarities)
+        print("Top Indices : ",top_indices)
+
+        # Get the previous queries, responses, and sentiments
+        previous_similar_queries = read_query_document(doc_ref=doc_ref, category=category, path="queries",
+                                                       index_values=top_indices)
+        previous_similar_response = read_query_document(doc_ref=doc_ref, category=category, path="responses",
+                                                        index_values=top_indices)
+        previous_similar_sentiments = read_query_document(doc_ref=doc_ref, category=category, path="sentiments",
+                                                          index_values=top_indices)
+
+        # Pool the user query embeddings with the top similar vectors
+        embeddings_query_and_previous = pooling_query_data(user_query_vector, top_vectors)
+
+        return previous_similar_queries, previous_similar_response, previous_similar_sentiments, embeddings_query_and_previous
+    except Exception as e:
+        print('Error in get_previous_query_data:', e)
+        return [], [], [], user_query_vector
+
+
 # Function to append data to an array field in Firestore
 
-def update_query_document(doc_ref, field_path, new_data):
+def update_query_document(doc_ref, category, field_name, new_data):
     try:
-        field_initial = field_path.split(".")[0]
-        field_second = field_path.split(".")[1]
         updated_data = []
         if doc_ref.get().exists:
-            l1 = doc_ref.get().to_dict()[field_initial][field_second]
+            l1 = doc_ref.get().to_dict()[category][field_name]
             if l1 is not None:
                 updated_data += l1
                 updated_data.append(new_data)
+            field_path = f"{category}.{field_name}"
             doc_ref.update({field_path: updated_data})
         else:
             print("Document does not exist")
@@ -70,14 +104,14 @@ def update_query_document(doc_ref, field_path, new_data):
 
 # Update the session with the new query, response, sentiment, and embedding
 
-def update_session(uid, category, new_embedding, new_query, new_response, new_sentiment):
+def update_session(db, uid, category, new_embedding, new_query, new_response, new_sentiment):
     try:
-        db = firestore.client()
+        # db = firestore.client()
         doc_ref = db.collection("Queries").document(uid)
-        update_query_document(doc_ref, f"{category}.embeddings", str(new_embedding))
-        update_query_document(doc_ref, f"{category}.queries", new_query)
-        update_query_document(doc_ref, f"{category}.responses", new_response)
-        update_query_document(doc_ref, f"{category}.sentiments", new_sentiment)
+        update_query_document(doc_ref, category, "embeddings", str(new_embedding))
+        update_query_document(doc_ref, category, "queries", new_query)
+        update_query_document(doc_ref, category, "responses", new_response)
+        update_query_document(doc_ref, category, "sentiments", new_sentiment)
 
     except Exception as e:
         print(f"Error in updating session on firestore: {e}")
@@ -108,41 +142,10 @@ def pooling_query_data(user_query_embeddings, previous_query_embeddings):
 
     # Compute the weighted average with user_query_embeddings
     pooling_embeddings = (5 * user_query_embeddings + previous_embeddings_average) / 6
-    print("Pooling embeddings:", pooling_embeddings)
+    print("Pooling embeddings:", pooling_embeddings[0:3])
 
     return pooling_embeddings
 
-
-def get_previous_query_data(uid, category, user_query_vector):
-    try:
-        # Create object of firestore
-        db = firestore.client()
-        doc_ref = db.collection("Queries").document(uid)
-
-        # Get all previous embeddings of the targeted category
-        previous_embeddings = get_all_embeddings(category=category, doc_ref=doc_ref)
-
-        # Find the top similar vectors
-        top_vectors, top_similarities, top_indices = find_top_similar_vectors(query_vector=user_query_vector,other_vectors=previous_embeddings, top_n=3)
-
-        print(top_similarities)
-        print(top_indices)
-
-        # Get the previous queries, responses, and sentiments
-        previous_similar_queries = read_query_document(doc_ref=doc_ref, category=category, path="queries",
-                                                       index_values=top_indices)
-        previous_similar_response = read_query_document(doc_ref=doc_ref, category=category, path="responses",
-                                                        index_values=top_indices)
-        previous_similar_sentiments = read_query_document(doc_ref=doc_ref, category=category, path="sentiments",
-                                                          index_values=top_indices)
-
-        # Pool the user query embeddings with the top similar vectors
-        embeddings_query_and_previous = pooling_query_data(user_query_vector, top_vectors)
-
-        return previous_similar_queries, previous_similar_response, previous_similar_sentiments, embeddings_query_and_previous
-    except Exception as e:
-        print('Error in get_previous_query_data:', e)
-        return [], [], [], user_query_vector
 
 # get_previous_query_data(uid="oGjjFFZj0IuCpSZmOT1Y", category=1, user_query_vector=user_query_embeddings)
 # update_session(uid="oGjjFFZj0IuCpSZmOT1Y", category=1, new_embedding = [1, 3, 2, 4, 5, 4, 3,5], new_query="how can i achieve scaling in EC2 in aws?", new_response="Sorry, can you please repeat that?", new_sentiment="Frustrated")

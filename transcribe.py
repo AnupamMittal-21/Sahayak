@@ -36,8 +36,8 @@ def transcribe_file(job_name, file_uri, transcribe_client):
             else:
                 print(f"Waiting for {job_name}. Current Status is {job_status}")
                 transcript = ""
-                time.sleep(6)
-        print(f"Transcript Successful Retrieved : {transcript}")
+                time.sleep(10)
+        # print(f"Transcript Successful Retrieved : {transcript}")
         return transcript
     except Exception as e:
         print(f"Error in transcribe_file function : {e}")

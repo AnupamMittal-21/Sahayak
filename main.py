@@ -15,14 +15,24 @@ from dotenv import load_dotenv
 import boto3
 import firebase_admin
 from firebase_admin import credentials
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 load_dotenv()
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,  # Allow cookies and HTTP authentication
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
 session = boto3.Session(
     aws_access_key_id=os.environ.get("ACCESS_KEY"),
     aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
-    region_name=os.environ.get("REGION")  # Optional
+    region_name=os.environ.get("REGION")
 )
 
 

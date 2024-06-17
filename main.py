@@ -1,6 +1,6 @@
 import uvicorn
 from polly import get_speech
-from GoEmotion import get_sentiment
+from GoEmotion import get_sentiment, sentiment_and_emotion_analysis
 from openAi import get_embeddings
 from firebase import get_previous_query_data
 from llm_response import get_response_from_llm
@@ -20,6 +20,11 @@ import os
 
 app = FastAPI()
 load_dotenv()
+
+cred = credentials.Certificate("vcs-hackon-firebase.json")
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(cred)
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -91,7 +96,8 @@ async def get_response(
 
         # Performing Sentiment analysis of the whole transcript using GoEmotion.
         # sentiment = "relaxed"
-        sentiment = get_sentiment(transcript)
+        # sentiment = get_sentiment(transcript)
+        sentiment = sentiment_and_emotion_analysis(transcript)
         print(f"Sentiment: {sentiment}")
 
 
@@ -108,8 +114,6 @@ async def get_response(
 #       ########################################### Firebase ######################################
 
         try:
-            cred = credentials.Certificate("vcs-hackon-firebase.json")
-            firebase_admin.initialize_app(cred)
             db = firestore.client()
             doc_ref = db.collection("Queries").document(uid)
             print(f"Firebase of {uid} Exists")
@@ -148,9 +152,9 @@ async def get_response(
 #       ###################################### Update DataBase ######################################
 
         # Processing the audio link for saving the speech by Amazon polly.
-        update_session(db=db, uid=uid, category=category, new_embedding=user_query_embeddings, new_query=transcript,
-                       new_response=response_llm, new_sentiment=sentiment)
-        print("Session Updated")
+        # update_session(db=db, uid=uid, category=category, new_embedding=user_query_embeddings, new_query=transcript,
+        #                new_response=response_llm, new_sentiment=sentiment)
+        # print("Session Updated")
 
 
 #       ########################################### Polly ############################################
@@ -176,8 +180,8 @@ def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
     #     print(f"Region is : {os.environ.get('REGION')}")
     #     port = int(os.environ.get("PORT", 8000))
     #     print(f"Starting server on port {port}")
-    # uvicorn.run('main:app', host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run('main:app', host="0.0.0.0", port=8000, reload=True)

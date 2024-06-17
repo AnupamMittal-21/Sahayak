@@ -22,11 +22,12 @@ def transcribe_file(job_name, file_uri, transcribe_client):
         except Exception as e:
             print(f"Error in transcribe_file function : {e}")
 
-        max_tries = 10
-        while max_tries > 0:
-            max_tries -= 1
-            job = transcribe_client.get_transcription_job(TranscriptionJobName=job_name)
-            job_status = job['TranscriptionJob']['TranscriptionJobStatus']
+        # max_tries = 10
+        # while max_tries > 0:
+        #     max_tries -= 1
+        job = transcribe_client.get_transcription_job(TranscriptionJobName=job_name)
+        job_status = job['TranscriptionJob']['TranscriptionJobStatus']
+        while(True):
             if job_status in ['COMPLETED', 'FAILED']:
                 if job_status == 'COMPLETED':
                     response = urllib.request.urlopen(job['TranscriptionJob']['Transcript']['TranscriptFileUri'])

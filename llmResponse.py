@@ -46,4 +46,5 @@ def get_response_from_llm(user_query, sentiment, previous_queries, previous_resp
 
         return answer
     except Exception as e:
-        raise RuntimeError(f"Failed to generate response from the language model. {e}")
+        print(f"Some Error occurred while getting response from LLM : {e}")
+        return ""

@@ -33,12 +33,10 @@ async def get_transcription(audio_file: UploadFile):
                 model="whisper-1",
                 file=named_audio_file
             )
-        except openai.error.OpenAIError as e:
-            raise RuntimeError(f"OpenAI API error: {e}")
         except Exception as e:
             raise RuntimeError(f"Failed to transcribe the audio: {e}")
 
         return translation['text']
     except Exception as e:
         # Handle all other exceptions
-        return {"error": str(e)}
+        raise RuntimeError(f"Failed to transcribe the audio, some unknown exception: {e}")

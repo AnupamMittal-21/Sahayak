@@ -26,8 +26,5 @@ def sentiment_and_emotion_analysis(transcription):
         )
         return response.choices[0].message['content']
 
-    except openai.error.OpenAIError as e:
-        return {"Error": f"OpenAI API error: {e}"}
-
     except Exception as e:
-        return {"Error": str(e)}
+        return {"No sentiment found"}

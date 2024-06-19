@@ -2,7 +2,14 @@ import io
 import os
 import openai
 from fastapi import UploadFile
-
+# import assemblyai as aai
+# from dotenv import load_dotenv
+# load_dotenv()
+# aai.settings.api_key = os.environ.get("ASSEMBLYAI_API_KEY")
+# transcriber = aai.Transcriber()
+#
+# transcript = transcriber.transcribe("https://storage.googleapis.com/aai-web-samples/news.mp4")
+#
 
 class NamedBytesIO(io.BytesIO):
     def __init__(self, content, name):

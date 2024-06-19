@@ -165,8 +165,8 @@ def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     #     print(f"Region is : {os.environ.get('REGION')}")
     #     port = int(os.environ.get("PORT", 8000))
     #     print(f"Starting server on port {port}")
-    uvicorn.run('main:app', host="0.0.0.0", port=8000, reload=True)
+    # uvicorn.run('main:app', host="0.0.0.0", port=8000, reload=True)

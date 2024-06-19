@@ -1,11 +1,10 @@
 import uvicorn
 from polly import get_speech
-from GoEmotion import get_sentiment, sentiment_and_emotion_analysis
-from openAi import get_embeddings
-from firebase import get_previous_query_data
-from llm_response import get_response_from_llm
-from service_db import get_services_response
-from firebase import update_session
+from openAISentiment import sentiment_and_emotion_analysis
+from firebaseSessionData import get_previous_query_and_response
+from llmResponse import get_response_from_llm
+from pinecone.grpc import PineconeGRPC as Pinecone
+from pineconeDB import query_pinecone
 from dotenv import load_dotenv
 import boto3
 import firebase_admin
@@ -13,15 +12,18 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from transcription_whisper import get_transcription
+from transcriptionWhisper import get_transcription
 from typing import Optional
 from fastapi import FastAPI, File, UploadFile, Form
+from chromaDB import get_top_k_results
+from updateFirebase import update_session
 import os
 
 app = FastAPI()
 load_dotenv()
 
 cred = credentials.Certificate("vcs-hackon-firebase.json")
+
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
@@ -46,12 +48,18 @@ session = boto3.Session(
 async def get_response(
         file: UploadFile = File(...),
         category: int = Form(...),
-        uid: Optional[str] = Form(None)
+        uid: Optional[str] = Form(None),
+        sessionId: Optional[str] = Form(None),
 ):
     try:
         # handling any unknown exception.
+        categories_list = ['generals', 'aws', 'order', 'prime', 'refund', 'retailer']
+        category = categories_list[category]
+        print("Selected Category is : ", category)
+        print("Session ID : ", sessionId)
 
-        # ############################################### Transcription #################################
+#       ######################################## Transcription ###################################
+
         # Ensure the uploaded file is an MP3
         if file.content_type != 'audio/mpeg':
             return {"Error": "Invalid file format. Expected MPEG."}
@@ -60,89 +68,67 @@ async def get_response(
             transcript = await get_transcription(file)
             print(transcript)
         except Exception as e:
-            transcript = ""
-            print("Got some exception in transcription")
-            print(e)
-
-        uid = 'oGjjFFZj0IuCpSZmOT1Y'
-        category = 0
-
-        categories_list = ['generals', 'aws', 'order', 'prime', 'refund', 'retailer']
-        category = categories_list[category]
-        print("Extracted audio link")
-        print(transcript)
-
-
-#       ######################################## OLD Transcription #################################
-
-        # file_name = str(random.randint(1000, 9999))
-        #
-        # transcribe_client = boto3.client(
-        #     'transcribe',
-        #     region_name='us-east-1',
-        #     aws_access_key_id=os.environ.get("ACCESS_KEY"),
-        #     aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
-        # )
-        #
-        # transcript = transcribe_file(job_name=file_name, file_uri=audio_link, transcribe_client=transcribe_client)
-        #
-        # if transcript == "":
-        #     return {"Error": "Error in Transcription"}
-        #
-        # transcript = "can you repeat the step you told me about the scaling in EC2 in AWS?"
+            print("Got some exception in transcription", e)
+            return {"Error": "Some Error in transcription"}
 
 
 #       ###################################### Sentiment Analysis ################################
 
-        # Performing Sentiment analysis of the whole transcript using GoEmotion.
-        # sentiment = "relaxed"
-        # sentiment = get_sentiment(transcript)
+        # Performing Sentiment analysis of the whole transcript using OpenAI.
         sentiment = sentiment_and_emotion_analysis(transcript)
         print(f"Sentiment: {sentiment}")
-
-
-#       ########################################## Embeddings #####################################
-
-        # Creating Embeddings of the transcript using OpenAI.
-        user_query_embeddings = get_embeddings(transcript)
-        if not user_query_embeddings:
-            return {"Error": "Error in getting transcription embeddings"}
-
-        print(f"Embeddings = {user_query_embeddings[0:3]}")
 
 
 #       ########################################### Firebase ######################################
 
         try:
             db = firestore.client()
-            doc_ref = db.collection("Queries").document(uid)
-            print(f"Firebase of {uid} Exists")
+            doc_ref = db.collection("sessions").document(sessionId)
+            print(f"Firebase of {sessionId} Exists")
 
         except Exception as e:
-            print(f"Firebase of {uid} does not Exists, Exception is : {e}")
-            return {"Error": "Error in initializing firebase"}
+            print(f"Firebase of {sessionId} does not Exists, Exception is : {e}")
+            return {"Error": "Error in initializing Firebase"}
 
         # Getting the previous query data and finding the top similar vectors.
-        previous_similar_queries, previous_similar_response, previous_similar_sentiments, embeddings_query_and_previous = get_previous_query_data(
-            doc_ref=doc_ref, uid=uid, category=category, user_query_vector=user_query_embeddings)
+        previous_queries, previous_responses = get_previous_query_and_response(doc_ref=doc_ref)
+        print(f"Previous Queries are : {previous_queries}")
+        print(f"Previous Responses are : {previous_responses}")
 
-        print(f"Previous Queries + User Query : {embeddings_query_and_previous[0:3]}")
+
+#       ####################### Get Top Previous Responses and Queries #############################
+
+        top_queries = []
+        top_responses = []
+        if previous_queries and previous_responses:
+            top_queries = get_top_k_results(itemList=previous_queries, k=5, user_query=transcript)
+            top_responses = get_top_k_results(itemList=previous_responses, k=5, user_query=transcript)
+        print(f"Top Queries are : {top_queries}")
+        print(f"Top Responses are : {top_responses}")
 
 
 #       ########################################### Service DB #####################################
 
         # Calculate the similarity between combined query and service database and get responses.
-        service_database_answers = get_services_response(embeddings_query_and_previous)
+        pinecone_api_key = os.environ.get('PINECONE_API_KEY')
+        pc = Pinecone(api_key=pinecone_api_key)
+
+        index_name = os.environ.get('PINECONE_INDEX_NAME')
+        index = pc.Index(index_name)
+        service_queries, service_responses = query_pinecone(index_=index, user_query=transcript, namespace_pine='aws')
+        print(f"Service Database Questions are : {service_queries}")
+        print(f"Service Database Answers are : {service_responses}")
 
 
 #       ########################################### LLM (OpenAI) ####################################
 
         # Pass the previous query data, the sentiment, the user query and the service database answers to the OpenAI.
         response_llm = get_response_from_llm(user_query=transcript, sentiment=sentiment,
-                                             previous_queries=previous_similar_queries,
-                                             previous_responses=previous_similar_response,
-                                             previous_sentiments=previous_similar_sentiments,
-                                             service_database_answers=service_database_answers)
+                                             previous_queries=top_queries,
+                                             previous_responses=top_responses,
+                                             service_database_questions=service_queries,
+                                             service_database_answers=service_responses,
+                                             language='english')
         if response_llm == "":
             return {"Error": "Error in getting response from LLM"}
 
@@ -152,9 +138,8 @@ async def get_response(
 #       ###################################### Update DataBase ######################################
 
         # Processing the audio link for saving the speech by Amazon polly.
-        # update_session(db=db, uid=uid, category=category, new_embedding=user_query_embeddings, new_query=transcript,
-        #                new_response=response_llm, new_sentiment=sentiment)
-        # print("Session Updated")
+        update_session(db=db, sessionId=sessionId, new_query=transcript,new_response=response_llm, new_sentiment=sentiment)
+        print("Session Updated")
 
 
 #       ########################################### Polly ############################################

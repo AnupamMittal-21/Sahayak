@@ -122,8 +122,8 @@ async def get_response(
 
         # Getting the previous query data and finding the top similar vectors.
         previous_queries, previous_responses = get_previous_query_and_response(doc_ref=doc_ref)
-        print(f"Previous Queries are : {len(previous_queries)}")
-        print(f"Previous Responses are : {len(previous_responses)}")
+        # print(f"Previous Queries are : {len(previous_queries)}")
+        # print(f"Previous Responses are : {len(previous_responses)}")
 
 
 #       ####################### Get Top Previous Responses and Queries #############################
@@ -137,8 +137,8 @@ async def get_response(
             top_responses = get_top_k_results(itemList=previous_responses,
                                               k=4,
                                               user_query=transcript)
-        print(f"Top Queries are : {len(top_queries)}")
-        print(f"Top Responses are : {len(top_responses)}")
+        # print(f"Top Queries are : {len(top_queries)}")
+        # print(f"Top Responses are : {len(top_responses)}")
 
 
 #       ########################################### Service DB #####################################
@@ -153,8 +153,8 @@ async def get_response(
                                                             user_query=transcript,
                                                             namespace_pine=category)
 
-        print(f"Service Database Questions are : {len(service_queries)}")
-        print(f"Service Database Answers are : {len(service_responses)}")
+        # print(f"Service Database Questions are : {len(service_queries)}")
+        # print(f"Service Database Answers are : {len(service_responses)}")
 
 
 #       ########################################### LLM (OpenAI) ####################################
@@ -217,8 +217,8 @@ def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
 
 
-# if __name__ == "__main__":
-#         # print(f"Region is : {os.environ.get('REGION')}")
-#         # port = int(os.environ.get("PORT", 8000))
-#         # print(f"Starting server on port {port}")
-#     uvicorn.run('main:app', host="0.0.0.0", port=8000, reload=True)
+if __name__ == "__main__":
+        # print(f"Region is : {os.environ.get('REGION')}")
+        # port = int(os.environ.get("PORT", 8000))
+        # print(f"Starting server on port {port}")
+    uvicorn.run('main:app', host="0.0.0.0", port=8000, reload=True)

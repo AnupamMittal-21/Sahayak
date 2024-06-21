@@ -4,9 +4,9 @@ import io
 import sys
 
 
-def get_speech(text, polly):
+def get_speech(text, polly, voice_id):
     try:
-        response = polly.synthesize_speech(Text=text, OutputFormat="mp3", VoiceId="Aditi", LanguageCode="hi-IN")
+        response = polly.synthesize_speech(Text=text, OutputFormat="mp3", VoiceId=voice_id)
     except (BotoCoreError, ClientError) as error:
         print(error)
         sys.exit(-1)

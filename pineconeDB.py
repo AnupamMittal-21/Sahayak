@@ -39,8 +39,9 @@ def query_pinecone(index_, user_query, namespace_pine):
     query_results = index_.query(
         namespace=namespace_pine,
         vector=query_vector,
-        top_k=3,
-        include_values=True,
+        top_k=4,
+        include_values=False,
+        include_distance=True,
         include_metadata=True,
     )
 
@@ -49,13 +50,15 @@ def query_pinecone(index_, user_query, namespace_pine):
 
     matches = query_results['matches']
     for match in matches:
-        responses.append(match['metadata']['response'])
-        queries.append(match['metadata']['queries'])
+        if match['score'] > 0.7:
+            responses.append(match['metadata']['response'])
+            queries.append(match['metadata']['queries'])
     return queries, responses
 
 
 # index = initialise_pinecone()
-# insert_data(index, queries, responses, 'aws')
+# insert_data(index, prime_queries, prime_responses, 'prime')
+
 # query = "tell me about ec2 auto scaling and how it works?"
 # queries_, response = query_pinecone(index, query, 'aws')
 # print(queries_, response)

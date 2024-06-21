@@ -17,6 +17,7 @@ from typing import Optional
 from fastapi import FastAPI, File, UploadFile, Form
 from chromaDB import get_top_k_results
 from updateFirebase import update_session
+from openAISentiment import get_emotion_and_sentiment
 import os
 
 app = FastAPI()
@@ -26,7 +27,6 @@ cred = credentials.Certificate("vcs-hackon-firebase.json")
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
-
 
 # Add CORS middleware
 app.add_middleware(
@@ -49,14 +49,40 @@ async def get_response(
         file: UploadFile = File(...),
         category: int = Form(...),
         uid: Optional[str] = Form(None),
+        language: Optional[str] = Form(None),
         sessionId: Optional[str] = Form(None),
 ):
     try:
         # handling any unknown exception.
-        categories_list = ['generals', 'aws', 'order', 'prime', 'refund', 'retailer']
+        categories_list = ['aws', 'aws', 'retail', 'refund', 'buyer', 'prime']
         category = categories_list[category]
         print("Selected Category is : ", category)
         print("Session ID : ", sessionId)
+        print("User ID : ", uid)
+        print("Language : ", language)
+
+        language_dict = {
+            'English': 'Danielle',
+            'Hindi': 'Aditi',
+            'Spanish': 'Mia',
+            'French': 'Mathieu',
+            'German': 'Hans',
+            'Chinese': 'Zhiyu',
+            'Japanese': 'Mizuki',
+            'Russian': 'Tatyana',
+            'Portuguese': 'Christiano',
+            'Italian': 'Bianca',
+            'Korean': 'Seoyeon',
+            'Arabic': 'Zeina',
+            'Turkish': 'Filiz',
+            'Dutch': 'Lotte',
+            'Swedish': 'Astrid',
+            'Polish': 'Ewa',
+        }
+        voice_id = 'Joanna'
+        if language in language_dict:
+            voice_id = language_dict[language]
+
 
 #       ######################################## Transcription ###################################
 
@@ -66,7 +92,9 @@ async def get_response(
 
         try:
             transcript = await get_transcription(file)
-            print(transcript)
+            if not transcript:
+                return {"Error": "No transcription found"}
+            print(f"Transcription: {transcript}")
         except Exception as e:
             print("Got some exception in transcription", e)
             return {"Error": "Some Error in transcription "}
@@ -75,8 +103,10 @@ async def get_response(
 #       ###################################### Sentiment Analysis ################################
 
         # Performing Sentiment analysis of the whole transcript using OpenAI.
-        sentiment = sentiment_and_emotion_analysis(transcript)
-        print(f"Sentiment: {sentiment}")
+        sentiment_text = sentiment_and_emotion_analysis(transcript)
+        sentiment, emotions = get_emotion_and_sentiment(sentiment_text)
+        print(f"Sentiment: {sentiment_text}")
+        print(f"Emotions: {emotions}")
 
 
 #       ########################################### Firebase ######################################
@@ -92,8 +122,8 @@ async def get_response(
 
         # Getting the previous query data and finding the top similar vectors.
         previous_queries, previous_responses = get_previous_query_and_response(doc_ref=doc_ref)
-        print(f"Previous Queries are : {previous_queries}")
-        print(f"Previous Responses are : {previous_responses}")
+        print(f"Previous Queries are : {len(previous_queries)}")
+        print(f"Previous Responses are : {len(previous_responses)}")
 
 
 #       ####################### Get Top Previous Responses and Queries #############################
@@ -101,10 +131,14 @@ async def get_response(
         top_queries = []
         top_responses = []
         if previous_queries and previous_responses:
-            top_queries = get_top_k_results(itemList=previous_queries, k=5, user_query=transcript)
-            top_responses = get_top_k_results(itemList=previous_responses, k=5, user_query=transcript)
-        print(f"Top Queries are : {top_queries}")
-        print(f"Top Responses are : {top_responses}")
+            top_queries = get_top_k_results(itemList=previous_queries,
+                                            k=4,
+                                            user_query=transcript)
+            top_responses = get_top_k_results(itemList=previous_responses,
+                                              k=4,
+                                              user_query=transcript)
+        print(f"Top Queries are : {len(top_queries)}")
+        print(f"Top Responses are : {len(top_responses)}")
 
 
 #       ########################################### Service DB #####################################
@@ -115,30 +149,40 @@ async def get_response(
 
         index_name = os.environ.get('PINECONE_INDEX_NAME')
         index = pc.Index(index_name)
-        service_queries, service_responses = query_pinecone(index_=index, user_query=transcript, namespace_pine='aws')
-        print(f"Service Database Questions are : {service_queries}")
-        print(f"Service Database Answers are : {service_responses}")
+        service_queries, service_responses = query_pinecone(index_=index,
+                                                            user_query=transcript,
+                                                            namespace_pine=category)
+
+        print(f"Service Database Questions are : {len(service_queries)}")
+        print(f"Service Database Answers are : {len(service_responses)}")
 
 
 #       ########################################### LLM (OpenAI) ####################################
 
         # Pass the previous query data, the sentiment, the user query and the service database answers to the OpenAI.
-        response_llm = get_response_from_llm(user_query=transcript, sentiment=sentiment,
+        response_llm = get_response_from_llm(user_query=transcript, sentiment=sentiment_text,
+                                             emotions=emotions,
                                              previous_queries=top_queries,
                                              previous_responses=top_responses,
                                              service_database_questions=service_queries,
                                              service_database_answers=service_responses,
-                                             language='english')
+                                             language=language)
+
         if response_llm == "":
             return {"Error": "Error in getting response from LLM"}
 
-        print(f"Response from LLM : {response_llm[0:20]}")
+        print(f"Response from LLM : {response_llm}")
 
 
 #       ###################################### Update DataBase ######################################
 
         # Processing the audio link for saving the speech by Amazon polly.
-        update_session(db=db, sessionId=sessionId, new_query=transcript,new_response=response_llm, new_sentiment=sentiment)
+        update_session(db=db,
+                       sessionId=sessionId,
+                       new_query=transcript,
+                       new_response=response_llm,
+                       new_sentiment=sentiment)
+
         print("Session Updated")
 
 
@@ -151,7 +195,15 @@ async def get_response(
             aws_secret_access_key=os.environ.get("SECRET_ACCESS_KEY"),
         )
 
-        audio_stream = get_speech(text=response_llm, polly=polly_obj)
+        try:
+            audio_stream = get_speech(text=response_llm,
+                                      polly=polly_obj,
+                                      voice_id=voice_id)
+
+        except:
+            audio_stream = get_speech(text=response_llm,
+                                      polly=polly_obj,
+                                      voice_id='Joanna')
 
         return StreamingResponse(audio_stream, media_type="audio/mpeg",
                                  headers={"Content-Disposition": "attachment; filename=speech.mp3"})
@@ -165,8 +217,8 @@ def read_root():
     return {"Info": "Enter '/get_response' to get correct response"}
 
 
-if __name__ == "__main__":
-        # print(f"Region is : {os.environ.get('REGION')}")
-        # port = int(os.environ.get("PORT", 8000))
-        # print(f"Starting server on port {port}")
-    uvicorn.run('main:app', host="0.0.0.0", port=8000, reload=True)
+# if __name__ == "__main__":
+#         # print(f"Region is : {os.environ.get('REGION')}")
+#         # port = int(os.environ.get("PORT", 8000))
+#         # print(f"Starting server on port {port}")
+#     uvicorn.run('main:app', host="0.0.0.0", port=8000, reload=True)

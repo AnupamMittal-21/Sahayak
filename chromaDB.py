@@ -22,12 +22,14 @@ def get_top_k_results(itemList, k, user_query):
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
         VectorStore = Chroma.from_texts(docs, embeddings)
-        response_docs = VectorStore.similarity_search(query=user_query, k=k)
+        response_docs = VectorStore.similarity_search_with_score(query=user_query, k=k)
 
-        documents = []
-        for document in response_docs:
-            documents.append(document.page_content)
+        filtered_documents = []
+        for document, score in response_docs:
+            if score > 0.7:
+                filtered_documents.append(document.page_content)
 
-        return documents
+        return filtered_documents
+
     except Exception as e:
         raise RuntimeError(f"Error in getting top k results: {e}")

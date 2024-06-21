@@ -2,12 +2,15 @@ import openai
 import os
 
 
-def get_response_from_llm(user_query, sentiment, previous_queries, previous_responses,
+def get_response_from_llm(user_query, sentiment, emotions, previous_queries, previous_responses,
                           service_database_answers, service_database_questions, language):
     # Combine the input data into a structured format
     input_data = f"""
     Current Query: {user_query}
     User Sentiment: {sentiment}
+    User Emotions: {emotions}
+    
+    make sure to create a response according to the emotions and sentiment of the user.
     Language: {language}
 
     NOTE THAT: Write the response in the given language only.
@@ -36,14 +39,12 @@ def get_response_from_llm(user_query, sentiment, previous_queries, previous_resp
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": input_data}
             ],
-            max_tokens=300,  # Adjust the token limit to ensure conciseness
-            temperature=0.5
+            max_tokens=550,  # Adjust the token limit to ensure conciseness
+            temperature=0.1,  # Adjust the temperature to control the creativity of the response
         )
 
         # Extract and print the response
         answer = response_llm.choices[0].message['content'].strip()
-        print(answer)
-
         return answer
     except Exception as e:
         print(f"Some Error occurred while getting response from LLM : {e}")

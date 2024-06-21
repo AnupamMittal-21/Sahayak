@@ -9,7 +9,7 @@ from fastapi import UploadFile
 # transcriber = aai.Transcriber()
 #
 # transcript = transcriber.transcribe("https://storage.googleapis.com/aai-web-samples/news.mp4")
-#
+
 
 class NamedBytesIO(io.BytesIO):
     def __init__(self, content, name):
@@ -38,7 +38,9 @@ async def get_transcription(audio_file: UploadFile):
             # Transcribe the audio using OpenAI API
             translation = openai.Audio.transcribe(
                 model="whisper-1",
-                file=named_audio_file
+                file=named_audio_file,
+                language="en",
+                temperature=0.2,
             )
         except Exception as e:
             raise RuntimeError(f"Failed to transcribe the audio: {e}")

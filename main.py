@@ -54,7 +54,7 @@ async def get_response(
 ):
     try:
         # handling any unknown exception.
-        categories_list = ['aws', 'aws', 'retail', 'refund', 'buyer', 'prime']
+        categories_list = ['generals', 'aws', 'retail', 'refund', 'buyers', 'prime']
         category = categories_list[category]
         print("Selected Category is : ", category)
         print("Session ID : ", sessionId)
@@ -62,7 +62,7 @@ async def get_response(
         print("Language : ", language)
 
         language_dict = {
-            'English': 'Danielle',
+            'English': 'Joanna',
             'Hindi': 'Aditi',
             'Spanish': 'Mia',
             'French': 'Mathieu',
@@ -104,9 +104,8 @@ async def get_response(
 
         # Performing Sentiment analysis of the whole transcript using OpenAI.
         sentiment_text = sentiment_and_emotion_analysis(transcript)
-        sentiment, emotions = get_emotion_and_sentiment(sentiment_text)
-        print(f"Sentiment: {sentiment_text}")
-        print(f"Emotions: {emotions}")
+        explanation, sentiment, emotions = get_emotion_and_sentiment(sentiment_text)
+        print(f"Sentiment Text: {sentiment_text}")
 
 
 #       ########################################### Firebase ######################################
@@ -132,14 +131,18 @@ async def get_response(
         top_responses = []
         if previous_queries and previous_responses:
             top_queries = get_top_k_results(itemList=previous_queries,
-                                            k=4,
-                                            user_query=transcript)
+                                            k=8,
+                                            user_query=transcript+explanation)
             top_responses = get_top_k_results(itemList=previous_responses,
-                                              k=4,
-                                              user_query=transcript)
-        # print(f"Top Queries are : {len(top_queries)}")
-        # print(f"Top Responses are : {len(top_responses)}")
+                                              k=8,
+                                              user_query=transcript+explanation)
 
+        print(f"\nTop User Queries are : ")
+        for top_query in top_queries:
+            print(top_query)
+        print(f"\nTop User Responses are : ")
+        for top_response in top_responses:
+            print(top_response)
 
 #       ########################################### Service DB #####################################
 
@@ -151,10 +154,16 @@ async def get_response(
         index = pc.Index(index_name)
         service_queries, service_responses = query_pinecone(index_=index,
                                                             user_query=transcript,
+                                                            queries=top_queries,
+                                                            responses=top_responses,
                                                             namespace_pine=category)
 
-        # print(f"Service Database Questions are : {len(service_queries)}")
-        # print(f"Service Database Answers are : {len(service_responses)}")
+        print(f"\nService Database Questions are : ")
+        for service_query in service_queries:
+            print(service_query)
+        print(f"\nService Database Responses are : ")
+        for service_response in service_responses:
+            print(service_response)
 
 
 #       ########################################### LLM (OpenAI) ####################################
@@ -171,7 +180,7 @@ async def get_response(
         if response_llm == "":
             return {"Error": "Error in getting response from LLM"}
 
-        print(f"Response from LLM : {response_llm}")
+        print(f"\nResponse from LLM : {response_llm}")
 
 
 #       ###################################### Update DataBase ######################################
@@ -183,7 +192,7 @@ async def get_response(
                        new_response=response_llm,
                        new_sentiment=sentiment)
 
-        print("Session Updated")
+        print("\nSession Updated")
 
 
 #       ########################################### Polly ############################################

@@ -29,7 +29,7 @@ def get_response_from_llm(user_query, sentiment, emotions, previous_queries, pre
     user. The response should adjust the text to reflect the sentiment so that it can be spoken using Amazon Polly. 
     Use the rule-based questions and answers to frame your response primarily. If the query is not related to 
     customer or Amazon-related matters, respond with "Please ask again or contact support for further assistance." 
-    Ensure the response is concise enough to be spoken within 40 seconds, and do not end the conversation abruptly."""
+    Ensure the response is concise enough to be spoken within 25 seconds, and do not end the conversation abruptly."""
 
     try:
         openai.api_key = os.environ.get("OPENAI_API_KEY")
@@ -39,8 +39,8 @@ def get_response_from_llm(user_query, sentiment, emotions, previous_queries, pre
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": input_data}
             ],
-            max_tokens=550,  # Adjust the token limit to ensure conciseness
-            temperature=0.1,  # Adjust the temperature to control the creativity of the response
+            max_tokens=250,  # Adjust the token limit to ensure conciseness
+            temperature=0.0,  # Adjust the temperature to control the creativity of the response
         )
 
         # Extract and print the response

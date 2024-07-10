@@ -26,7 +26,7 @@ def get_top_k_results(itemList, k, user_query):
 
         filtered_documents = []
         for document, score in response_docs:
-            if score > 0.7:
+            if score > 0.7 and document.page_content not in filtered_documents:
                 filtered_documents.append(document.page_content)
 
         return filtered_documents
